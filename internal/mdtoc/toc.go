@@ -63,14 +63,36 @@ func Build(reader io.Reader) ([]Section, error) {
 func Format(sections []Section) string {
 	var builder strings.Builder
 	for _, section := range sections {
-		selector := shellSingleQuote(section.Selector)
-		if section.Ambiguous {
-			selector = "AMBIGUOUS " + selector
-		}
-		fmt.Fprintf(&builder, "%d-%d    %s\n", section.StartLine, section.EndLine, selector)
+		fmt.Fprintf(&builder, "%d-%d    %s\n", section.StartLine, section.EndLine, formatSelector(section))
 	}
 
 	return builder.String()
+}
+
+// FormatFile renders sections with a file path prefix for multi-file output.
+func FormatFile(path string, sections []Section) string {
+	var builder strings.Builder
+	for _, section := range sections {
+		fmt.Fprintf(
+			&builder,
+			"%s:%d-%d    %s\n",
+			path,
+			section.StartLine,
+			section.EndLine,
+			formatSelector(section),
+		)
+	}
+
+	return builder.String()
+}
+
+func formatSelector(section Section) string {
+	selector := shellSingleQuote(section.Selector)
+	if section.Ambiguous {
+		return "AMBIGUOUS " + selector
+	}
+
+	return selector
 }
 
 func scan(reader io.Reader) ([]string, []heading, error) {

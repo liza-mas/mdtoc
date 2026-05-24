@@ -23,10 +23,10 @@ const helpText = `Description:
 Usage:
   mdtoc --help
   mdtoc --version
-  mdtoc <markdown-file>
+  mdtoc <markdown-file> [<markdown-file>...]
 
 Output:
-  START-END    'MDQ_SELECTOR'
+  FILE:START-END    'MDQ_SELECTOR'
 
 Exit codes:
   0  success
@@ -57,23 +57,27 @@ func runWithBuildIdentity(args []string, stdout io.Writer, stderr io.Writer, bui
 		return statusOK
 	}
 
-	if len(args) != 1 {
-		return writeDiagnostic(stderr, statusUsage, "usage: mdtoc <markdown-file>")
+	if len(args) == 0 {
+		return writeDiagnostic(stderr, statusUsage, "usage: mdtoc <markdown-file> [<markdown-file>...]")
 	}
 
-	file, err := os.Open(args[0])
-	if err != nil {
-		return writeDiagnostic(stderr, statusInput, err.Error())
-	}
-	defer file.Close()
+	for _, path := range args {
+		file, err := os.Open(path)
+		if err != nil {
+			return writeDiagnostic(stderr, statusInput, err.Error())
+		}
 
-	sections, err := mdtoc.Build(file)
-	if err != nil {
-		return writeDiagnostic(stderr, statusInput, err.Error())
-	}
+		sections, err := mdtoc.Build(file)
+		if closeErr := file.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
+		if err != nil {
+			return writeDiagnostic(stderr, statusInput, err.Error())
+		}
 
-	if _, err := fmt.Fprint(stdout, mdtoc.Format(sections)); err != nil {
-		return writeDiagnostic(stderr, statusUsage, err.Error())
+		if _, err := fmt.Fprint(stdout, mdtoc.FormatFile(path, sections)); err != nil {
+			return writeDiagnostic(stderr, statusUsage, err.Error())
+		}
 	}
 
 	return statusOK

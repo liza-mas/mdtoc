@@ -34,6 +34,40 @@ func TestBuildEmitsSourceOrderSectionsWithParentRanges(t *testing.T) {
 	}
 }
 
+func TestFormatFilePrefixesRowsWithPath(t *testing.T) {
+	t.Parallel()
+
+	sections, err := Build(strings.NewReader("# A\n## B\n"))
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+
+	got := FormatFile("docs/example.md", sections)
+	want := strings.Join([]string{
+		`docs/example.md:1-2    '# ^"A"$'`,
+		`docs/example.md:2-2    '# ^"A"$ | # ^"B"$'`,
+		"",
+	}, "\n")
+	if got != want {
+		t.Fatalf("FormatFile() = %q, want %q", got, want)
+	}
+}
+
+func TestFormatFilePreservesRawPathPrefix(t *testing.T) {
+	t.Parallel()
+
+	sections, err := Build(strings.NewReader("# A\n"))
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+
+	got := FormatFile("space dir/file one:100%.md", sections)
+	want := `space dir/file one:100%.md:1-1    '# ^"A"$'` + "\n"
+	if got != want {
+		t.Fatalf("FormatFile() = %q, want %q", got, want)
+	}
+}
+
 func TestBuildIgnoresHeadingLikeTextInsideFencedCode(t *testing.T) {
 	t.Parallel()
 

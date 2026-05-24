@@ -4,20 +4,24 @@
 complete [`mdq`](https://github.com/yshavit/mdq) selectors.
 
 ```bash
-mdtoc path/to/file.md
+mdtoc path/to/file.md [path/to/other.md...]
 ```
 
 Output shape:
 
 ```text
-START-END    'MDQ_SELECTOR'
+FILE:START-END    'MDQ_SELECTOR'
 ```
+
+`FILE` is the raw input path, like `rg` output. Paths containing whitespace are
+printed as-is.
 
 Example:
 
 ```text
-1-12    '# ^"Architecture"$'
-5-12    '# ^"Architecture"$ | # ^"Data Flow"$'
+docs/plan.md:1-12    '# ^"Architecture"$'
+docs/plan.md:5-12    '# ^"Architecture"$ | # ^"Data Flow"$'
+space dir/file one.md:1-4    '# ^"Notes"$'
 ```
 
 ## Behavior Contract
@@ -38,16 +42,19 @@ and segments are chained with ` | `:
 ```
 
 Successful output has no explanatory prose. Every non-empty line starts with a
-`START-END` token, followed by whitespace, followed by the selector field. The
-range can be converted to `sed -n 'START,ENDp'`; the selector field is intended
-to be copied directly into `mdq`.
+`FILE:START-END` token, followed by whitespace, followed by the selector field.
+Because file paths are raw, paths containing whitespace make the first
+whitespace-delimited token ambiguous; parse the line by finding the rightmost
+`:START-END` range before the selector field. The range can be converted to
+`sed -n 'START,ENDp'`; the selector field is intended to be copied directly into
+`mdq`.
 
 If a heading path cannot be represented uniquely, the row marks the selector as
 ambiguous while keeping the line range usable:
 
 ```text
-12-18    AMBIGUOUS '# ^"A"$ | # ^"Duplicate"$'
-19-25    AMBIGUOUS '# ^"A"$ | # ^"Duplicate"$'
+docs/plan.md:12-18    AMBIGUOUS '# ^"A"$ | # ^"Duplicate"$'
+docs/plan.md:19-25    AMBIGUOUS '# ^"A"$ | # ^"Duplicate"$'
 ```
 
 Files with no headings produce no rows and exit successfully.
