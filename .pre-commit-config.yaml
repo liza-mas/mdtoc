@@ -1,0 +1,88 @@
+default_stages: [pre-commit]
+fail_fast: false
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-merge-conflict
+        stages: [pre-commit]
+      - id: check-merge-conflict
+        args: [--assume-in-merge]
+        stages: [pre-push]
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-json
+      - id: debug-statements
+      - id: end-of-file-fixer
+        stages: [pre-commit]
+      - id: trailing-whitespace
+        stages: [pre-commit]
+
+  - repo: https://github.com/Lucas-C/pre-commit-hooks
+    rev: v1.5.5
+    hooks:
+      - id: forbid-crlf
+      - id: remove-crlf
+
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v4.10.0
+    hooks:
+      - id: commitizen
+        stages: [commit-msg]
+
+  - repo: local
+    hooks:
+      - id: jscpd  # a useful one to counter the tendency of coding agents to duplicate code
+        name: jscpd (duplicate code detection)
+        # write cache to a universally-writable location
+        entry: bash -c 'NPM_CONFIG_CACHE=/tmp/.npm-cache npx jscpd . --min-lines 10 --min-tokens 50 --threshold 5 --noSymlinks --ignore "**/tests/**,**/*_test.go,**/.venv/**,**/_archive/**,**/.idea/**,**/internal/embedded/**,**/.liza/**,**/.worktrees/**,**/.claude/**,claude-settings.json"'
+        language: system
+        files: \.(py|go)$  # trigger when Python or Go files are staged
+        pass_filenames: false  # but scan full directory (dupes are cross-file)
+        stages: [pre-commit, pre-push]
+
+      - id: go-fmt
+        name: go fmt (formatting)
+        entry: /usr/local/go/bin/gofmt -w -l
+        language: system
+        files: \.go$
+
+      - id: goimports
+        name: goimports (format + imports)
+        entry: bash -c 'export PATH="/usr/local/go/bin:$PATH"; export GOPATH="${HOME}/.cache/go" GOMODCACHE="${HOME}/.cache/go/pkg/mod" GOCACHE="${HOME}/.cache/go/build"; mkdir -p "$GOPATH" "$GOMODCACHE" "$GOCACHE"; go run golang.org/x/tools/cmd/goimports@latest -w "$@"' --
+        language: system
+        files: \.go$
+
+      - id: go-vet
+        name: go vet (static analysis)
+        entry: bash -c 'export PATH="/usr/local/go/bin:$PATH" && make sync-embedded && go vet ./...'
+        language: system
+        files: \.go$
+        pass_filenames: false
+
+      - id: staticcheck
+        name: staticcheck (advanced static analysis)
+        entry: bash -c 'export PATH="/usr/local/go/bin:$PATH"; export GOPATH="${HOME}/.cache/go" GOMODCACHE="${HOME}/.cache/go/pkg/mod" GOCACHE="${HOME}/.cache/go/build"; mkdir -p "$GOPATH" "$GOMODCACHE" "$GOCACHE"; make sync-embedded && go run honnef.co/go/tools/cmd/staticcheck@latest ./...'
+        language: system
+        files: \.go$
+        pass_filenames: false
+
+      - id: check-testhelpers
+        name: check testhelpers not in production code
+        entry: make check-testhelpers
+        language: system
+        files: \.go$
+        pass_filenames: false
+
+      - id: go-mod-tidy
+        name: go mod tidy (dependency cleanup)
+        entry: bash -c 'export PATH="/usr/local/go/bin:$PATH"; export GOPATH="${HOME}/.cache/go" GOMODCACHE="${HOME}/.cache/go/pkg/mod" GOCACHE="${HOME}/.cache/go/build"; mkdir -p "$GOPATH" "$GOMODCACHE" "$GOCACHE"; make sync-embedded && go mod tidy'
+        language: system
+        files: ^(go\.mod|go\.sum|.*\.go)$
+        pass_filenames: false
+
+  - repo: meta
+    hooks:
+#      - id: check-hooks-apply
+      - id: check-useless-excludes
